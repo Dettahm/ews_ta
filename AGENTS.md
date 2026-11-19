@@ -1,0 +1,1 @@
+# Proyek ini dipandu PROJECT_SPEC_BARU.md. Selalu patuhi Bagian 3 (Aturan untuk AI Agent) dan keputusan terkunci K1-K9.

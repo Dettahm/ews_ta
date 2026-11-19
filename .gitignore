@@ -1,0 +1,24 @@
+# File dan folder yang diabaikan Git (tidak di-commit)
+
+# Virtual environment Python
+.venv/
+
+# Database SQLite lokal
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# File rahasia (password MQTT, token Cloudflare)
+.env
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# File log
+*.log
+
+# File sistem Windows
+Thumbs.db
+desktop.ini

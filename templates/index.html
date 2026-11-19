@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EWS Gelombang Air — Kanal Gelombang Lab</title>
+    <!-- Aset vendor lokal (Tanpa CDN — Bagian 6.5) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body class="bg-light">
+
+<div class="container py-4">
+
+    <!-- 1. HEADER UTAMA (HERO AREA) -->
+    <header class="d-flex flex-column flex-md-row justify-content-between align-items-md-center pb-3 mb-4 border-bottom">
+        <div>
+            <h1 class="h3 fw-bold mb-1 text-dark">EWS Gelombang Air — Kanal Gelombang Lab</h1>
+            <p class="text-muted small mb-0">Sistem Peringatan Dini Kenaikan Gelombang Air Berbasis Sensor Fusion & Fuzzy Mamdani</p>
+        </div>
+        <div class="mt-3 mt-md-0 text-md-end">
+            <div class="d-flex align-items-center justify-content-md-end gap-2">
+                <span id="conn-badge" class="badge bg-secondary fs-6 px-3 py-2">[MENGHUBUNGKAN...]</span>
+                <span id="clock-wib" class="fw-semibold text-secondary">--:--:-- WIB</span>
+            </div>
+            <div class="text-muted small mt-1" id="data-age-info">Memuat data sensor...</div>
+        </div>
+    </header>
+
+    <!-- 2. BARIS METRIK UTAMA (4 KARTU GRID MURNI) -->
+    <section class="row g-3 mb-3">
+        <!-- Kartu 1: Tinggi S4 (Input Utama Fuzzy - Pesisir) -->
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="metric-card bg-white p-3 rounded border h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted small fw-semibold text-uppercase tracking-wide">Tinggi S4 (Pesisir)</span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.7rem;">Input Fuzzy</span>
+                </div>
+                <div class="d-flex align-items-baseline gap-2 mt-2">
+                    <span class="metric-value fw-bold" id="val-height-s4">--</span>
+                    <span class="text-muted fs-5">cm</span>
+                </div>
+                <div class="text-muted small mt-2" id="sensor-count-info">Sensor aktif: --/4</div>
+            </div>
+        </div>
+
+        <!-- Kartu 2: Debit Air -->
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="metric-card bg-white p-3 rounded border h-100">
+                <div class="text-muted small fw-semibold text-uppercase tracking-wide">Debit Air</div>
+                <div class="d-flex align-items-baseline gap-2 mt-2">
+                    <span class="metric-value fw-bold" id="val-flow">--</span>
+                    <span class="text-muted fs-5">L/mnt</span>
+                </div>
+                <div class="text-muted small mt-2">Flowmeter YF-S201</div>
+            </div>
+        </div>
+
+        <!-- Kartu 3: Nilai Fuzzy Mamdani -->
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="metric-card bg-white p-3 rounded border h-100">
+                <div class="text-muted small fw-semibold text-uppercase tracking-wide">Skor Risiko Fuzzy</div>
+                <div class="d-flex align-items-baseline gap-2 mt-2">
+                    <span class="metric-value fw-bold" id="val-fuzzy">--</span>
+                    <span class="text-muted fs-5">/ 100</span>
+                </div>
+                <div class="text-muted small mt-2">Defuzzifikasi Centroid</div>
+            </div>
+        </div>
+
+        <!-- Kartu 4: Status Bahaya (Warna Fungsional Kontras) -->
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div id="status-card" class="metric-card p-3 rounded border h-100 status-offline">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="small fw-semibold text-uppercase text-white-50">Status Bahaya</span>
+                    <span id="badge-arah" class="badge-arah d-none">--</span>
+                </div>
+                <div class="status-value fw-bold text-white mt-1" id="val-status">OFFLINE</div>
+                <div class="text-white small mt-2 opacity-75" id="val-source">Sumber: --</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. BARIS METRIK SENSOR FUSION (2 KARTU LEBAR: TINGGI GLOBAL & KECEPATAN GELOMBANG) -->
+    <section class="row g-3 mb-4">
+        <!-- Kartu 5: Tinggi Global Maket -->
+        <div class="col-12 col-md-6">
+            <div class="metric-card bg-white p-3 rounded border h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small fw-semibold text-uppercase tracking-wide">Tinggi Global Maket</span>
+                        <div class="text-muted small" style="font-size: 0.75rem;">Stabilitas Volume Air (Median S1–S4)</div>
+                    </div>
+                    <span id="badge-stabilitas" class="badge bg-secondary fs-7 px-2 py-1">STABIL</span>
+                </div>
+                <div class="d-flex align-items-baseline gap-2 mt-2">
+                    <span class="metric-value-lg fw-bold" id="val-height-global">--</span>
+                    <span class="text-muted fs-5">cm</span>
+                </div>
+                <div class="text-muted small mt-2">Acuan level air tenang: ±15,0 cm (tidak masuk fuzzy)</div>
+            </div>
+        </div>
+
+        <!-- Kartu 6: Kecepatan Rerata Gelombang Terakhir -->
+        <div class="col-12 col-md-6">
+            <div class="metric-card bg-white p-3 rounded border h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small fw-semibold text-uppercase tracking-wide">Kecepatan Gelombang Terakhir</span>
+                        <div class="text-muted small" style="font-size: 0.75rem;">Puncak S1 &rarr; S4 (Jarak 75 cm)</div>
+                    </div>
+                    <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 0.75rem;">Puncak &ge; 20 cm</span>
+                </div>
+                <div class="d-flex align-items-baseline gap-2 mt-2">
+                    <span class="metric-value-lg fw-bold" id="val-wave-speed">--</span>
+                    <span class="text-muted fs-5">cm/s</span>
+                </div>
+                <div class="text-muted small mt-2" id="val-wave-info">Belum ada kejadian gelombang tercatat</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. AREA GRAFIK UTAMA: TINGGI S4 + TINGGI GLOBAL + DEBIT AIR (DUAL Y-AXIS) -->
+    <section class="bg-white p-3 p-md-4 rounded border mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h2 class="h5 fw-bold mb-0 text-dark">Grafik Real-Time: Tinggi Pesisir (S4), Global Maket & Debit</h2>
+                <div class="text-muted small">Pembaruan otomatis tiap 2 detik</div>
+            </div>
+            <div class="text-muted small">
+                <span class="badge bg-light text-dark border me-1">S4: Solid Biru</span>
+                <span class="badge bg-light text-dark border me-1">Global: Putus Ungu</span>
+                <span class="badge bg-light text-dark border">Debit: Putus Cyan</span>
+            </div>
+        </div>
+        <div class="chart-container" style="position: relative; height: 320px; width: 100%;">
+            <canvas id="chart-main"></canvas>
+        </div>
+    </section>
+
+    <!-- 5. AREA GRAFIK SEKUNDER (GRID 50/50: RISIKO FUZZY & TREN KECEPATAN GELOMBANG) -->
+    <section class="row g-4 mb-4">
+        <!-- Kolom Kiri: Grafik Skor Fuzzy (0–100) -->
+        <div class="col-12 col-lg-6">
+            <div class="bg-white p-3 p-md-4 rounded border h-100">
+                <h2 class="h5 fw-bold mb-3 text-dark">Indeks Risiko Fuzzy (0–100)</h2>
+                <div class="chart-container" style="position: relative; height: 240px; width: 100%;">
+                    <canvas id="chart-fuzzy"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kolom Kanan: Grafik Tren Kecepatan Gelombang (cm/s) -->
+        <div class="col-12 col-lg-6">
+            <div class="bg-white p-3 p-md-4 rounded border h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="h5 fw-bold mb-0 text-dark">Tren Kecepatan Gelombang</h2>
+                    <span class="text-muted small">Titik per kejadian</span>
+                </div>
+                <div class="chart-container" style="position: relative; height: 240px; width: 100%;">
+                    <canvas id="chart-wave"></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. PANEL RIWAYAT PERUBAHAN STATUS LEVEL -->
+    <section class="bg-white p-3 p-md-4 rounded border mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h5 fw-bold mb-0 text-dark">Riwayat Perubahan Level Bahaya</h2>
+            <span class="text-muted small">10 Kejadian Terakhir</span>
+        </div>
+        <ul class="list-group list-group-flush" id="events-list">
+            <li class="list-group-item text-muted py-2 px-0">Belum ada riwayat transisi level.</li>
+        </ul>
+    </section>
+
+    <!-- 7. FOOTER & KONTROL DATA -->
+    <footer class="pt-3 border-top mt-5">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted small fw-semibold">Rentang Grafik:</span>
+                <button type="button" class="btn btn-sm btn-outline-secondary range-btn active" data-limit="120">2 Menit</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary range-btn" data-minutes="30">30 Menit</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary range-btn" data-minutes="120">2 Jam</button>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/api/export.csv" class="btn btn-sm btn-outline-secondary" download>
+                    Unduh Telemetri (.CSV)
+                </a>
+                <a href="/api/export_gelombang.csv" class="btn btn-sm btn-primary" download>
+                    Unduh Gelombang (.CSV)
+                </a>
+            </div>
+        </div>
+        <p class="text-muted small text-center mt-4 mb-0">
+            <strong>Disclaimer:</strong> Prototipe skala laboratorium — bukan pengganti peringatan resmi BMKG/BNPB.
+        </p>
+    </footer>
+
+</div>
+
+<!-- Script Vendor Lokal (Tanpa CDN — Bagian 6.5) -->
+<script src="{{ url_for('static', filename='vendor/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<!-- Script Aplikasi -->
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+</body>
+</html>

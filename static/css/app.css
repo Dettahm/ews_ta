@@ -1,0 +1,131 @@
+/*
+app.css — Gaya Visual Dashboard IoT EWS Gelombang Air
+Sesuai PROJECT_SPEC_BARU.md v1.1 (Sensor Fusion) & Prinsip UI/UX Pro Max
+Fungsional, kontras tinggi, hierarki tipografi tegas, bebas elemen palsu.
+*/
+
+:root {
+    --font-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --color-aman: #2E7D32;
+    --color-waspada: #F9A825;
+    --color-siaga: #EF6C00;
+    --color-bahaya: #C62828;
+    --color-offline: #757575;
+}
+
+body {
+    font-family: var(--font-base);
+    background-color: #F8F9FA !important;
+    color: #212529;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Kartu Metrik Utama */
+.metric-card {
+    border: 1px solid #DEE2E6 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.metric-value {
+    font-size: 2.25rem;
+    line-height: 1.1;
+    color: #1A1A1A;
+    font-variant-numeric: tabular-nums;
+}
+
+.metric-value-lg {
+    font-size: 2rem;
+    line-height: 1.1;
+    color: #1A1A1A;
+    font-variant-numeric: tabular-nums;
+}
+
+.status-value {
+    font-size: 1.85rem;
+    line-height: 1.2;
+    letter-spacing: 0.5px;
+}
+
+/* Badge Arah Anomali Bahaya (Surut / Luapan) */
+.badge-arah {
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.28);
+    display: inline-block;
+}
+
+/* Badge Stabilitas Maket */
+.badge-stabil {
+    background-color: #2E7D32 !important;
+    color: #FFFFFF !important;
+}
+
+.badge-turun {
+    background-color: #F9A825 !important;
+    color: #212529 !important;
+}
+
+.badge-naik {
+    background-color: #EF6C00 !important;
+    color: #FFFFFF !important;
+}
+
+/* Status Bahaya — Warna Fungsional Kontras (Bagian 6.4) */
+.status-aman {
+    background-color: var(--color-aman) !important;
+    border-color: var(--color-aman) !important;
+    color: #FFFFFF !important;
+}
+
+.status-waspada {
+    background-color: var(--color-waspada) !important;
+    border-color: var(--color-waspada) !important;
+    color: #212529 !important;
+}
+.status-waspada .small,
+.status-waspada .status-value,
+.status-waspada #val-source {
+    color: #212529 !important;
+}
+
+.status-siaga {
+    background-color: var(--color-siaga) !important;
+    border-color: var(--color-siaga) !important;
+    color: #FFFFFF !important;
+}
+
+.status-bahaya {
+    background-color: var(--color-bahaya) !important;
+    border-color: var(--color-bahaya) !important;
+    color: #FFFFFF !important;
+    animation: pulse-soft 2s infinite ease-in-out;
+}
+
+.status-offline {
+    background-color: var(--color-offline) !important;
+    border-color: var(--color-offline) !important;
+    color: #FFFFFF !important;
+}
+
+@keyframes pulse-soft {
+    0% { opacity: 1; }
+    50% { opacity: 0.88; }
+    100% { opacity: 1; }
+}
+
+/* Riwayat Event List */
+#events-list .list-group-item {
+    font-size: 0.875rem;
+    border-bottom: 1px solid #ECEFF1;
+}
+
+/* Tombol Rentang Aktif */
+.range-btn.active {
+    background-color: #495057 !important;
+    color: #FFFFFF !important;
+    border-color: #495057 !important;
+}
