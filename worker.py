@@ -179,6 +179,11 @@ def run_worker():
     tick = 0
     last_level: Optional[str] = None
     last_log_time = 0.0
+    mqtt_source = None
+
+    if config.DATA_SOURCE == "mqtt":
+        mqtt_source = sources.MQTTTelemetrySource()
+        mqtt_source.start()
 
     try:
         while True:
@@ -188,8 +193,11 @@ def run_worker():
             if config.DATA_SOURCE == "sim":
                 payload = sources.generate_simulated_payload(config.SIM_SCENARIO, tick)
             else:
-                # Mode MQTT akan terhubung ke broker di Fase 4
-                payload = sources.generate_simulated_payload("tenang", tick)
+                # Mode MQTT: ambil dari antrean (tunggu maksimal 0.1 detik)
+                payload = mqtt_source.get_payload(timeout=0.1)
+                if payload is None:
+                    # Tidak ada pesan baru; jangan tulis nilai palsu
+                    continue
 
             # 2. Proses data 3 jalur (A, B, C)
             current_level, rec, wave_event = process_telemetry(payload, tick, last_level)
@@ -216,13 +224,17 @@ def run_worker():
 
             tick += 1
 
-            # Jaga interval eksekusi
-            elapsed = time.time() - t_start
-            sleep_time = max(0.02, config.WORKER_INTERVAL_S - elapsed)
-            time.sleep(sleep_time)
+            # Jaga interval eksekusi pada mode simulator (di MQTT mengikuti laju pesan ESP32)
+            if config.DATA_SOURCE == "sim":
+                elapsed = time.time() - t_start
+                sleep_time = max(0.02, config.WORKER_INTERVAL_S - elapsed)
+                time.sleep(sleep_time)
 
     except KeyboardInterrupt:
         print("\n[!] Worker dihentikan oleh pengguna.")
+    finally:
+        if mqtt_source is not None:
+            mqtt_source.stop()
 
 
 if __name__ == "__main__":

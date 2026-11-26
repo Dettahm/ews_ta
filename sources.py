@@ -6,7 +6,9 @@ Sesuai PROJECT_SPEC_BARU.md v1.1 (Sensor Fusion) Bagian 5.3 & 5.5:
   gelombang_lewat, gelombang_noise, sensor_error, kebocoran_pelan)
 """
 
+import json
 import math
+import queue
 import random
 import time
 from typing import Dict, Any, List, Optional
@@ -175,3 +177,110 @@ def generate_simulated_payload(scenario: str, tick: int) -> Dict[str, Any]:
         "us_cm": us_readings,
         "flow_lpm": flow_lpm,
     }
+
+
+class MQTTTelemetrySource:
+    """
+    Sumber data MQTT nyata dari ESP32 melalui Mosquitto Broker.
+    Sesuai PROJECT_SPEC_BARU.md v1.1 (Bagian 4 & Fase 4):
+    - Menggunakan paho-mqtt 2.x (CallbackAPIVersion.VERSION2)
+    - Callback on_message hanya menaruh payload ke queue agar koneksi tidak tertahan
+    - Subscribe dilakukan di dalam on_connect agar pulih otomatis saat reconnect
+    """
+
+    def __init__(self, max_queue_size: int = 200):
+        import paho.mqtt.client as mqtt
+
+        self._mqtt = mqtt
+        self.queue: queue.Queue = queue.Queue(maxsize=max_queue_size)
+        self.connected: bool = False
+        self.esp32_status: str = "unknown"
+
+        # paho-mqtt 2.x mewajibkan callback_api_version
+        if hasattr(mqtt, "CallbackAPIVersion"):
+            self.client = mqtt.Client(
+                callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+                client_id="ews-pi-worker",
+            )
+        else:
+            self.client = mqtt.Client(client_id="ews-pi-worker")
+
+        # Set autentikasi hanya jika password diisi (mendukung mode tanpa password / anonymous)
+        if config.MQTT_USER and config.MQTT_PASSWORD:
+            self.client.username_pw_set(config.MQTT_USER, config.MQTT_PASSWORD)
+
+        self.client.on_connect = self._on_connect
+        self.client.on_disconnect = self._on_disconnect
+        self.client.on_message = self._on_message
+        self.client.reconnect_delay_set(min_delay=1, max_delay=10)
+
+    def _on_connect(self, client, userdata, flags, reason_code, properties=None):
+        """Dipanggil saat koneksi ke broker berhasil; langsung subscribe ulang topik."""
+        if reason_code == 0:
+            self.connected = True
+            print(f"[MQTT] Terhubung ke broker {config.MQTT_BROKER}:{config.MQTT_PORT}")
+            client.subscribe(config.MQTT_TOPIC_TELEMETRY, qos=0)
+            client.subscribe(config.MQTT_TOPIC_STATUS, qos=0)
+            print(f"[MQTT] Subscribe ke {config.MQTT_TOPIC_TELEMETRY} & {config.MQTT_TOPIC_STATUS}")
+        else:
+            self.connected = False
+            print(f"[MQTT] Gagal terhubung (reason_code={reason_code})")
+
+    def _on_disconnect(self, client, userdata, disconnect_flags, reason_code=None, properties=None):
+        """Dipanggil saat koneksi ke broker terputus."""
+        self.connected = False
+        print(f"[MQTT] Terputus dari broker (rc={reason_code}). Mencoba menyambung ulang...")
+
+    def _on_message(self, client, userdata, msg):
+        """
+        Callback penerima pesan.
+        Hanya memvalidasi JSON dasar lalu memasukkan ke antrean (non-blocking).
+        """
+        topic = msg.topic
+        raw = msg.payload.decode("utf-8", errors="ignore").strip()
+
+        if topic == config.MQTT_TOPIC_STATUS:
+            self.esp32_status = raw
+            print(f"[MQTT] Status ESP32: {raw}")
+            return
+
+        if topic == config.MQTT_TOPIC_TELEMETRY:
+            try:
+                data = json.loads(raw)
+                if not isinstance(data, dict):
+                    return
+                us_cm = data.get("us_cm")
+                t_ms = data.get("t_ms")
+                if not isinstance(us_cm, list) or len(us_cm) != 4:
+                    return
+                if not isinstance(t_ms, list) or len(t_ms) != 4:
+                    return
+
+                # Jika antrean penuh, buang data paling lama agar tetap real-time
+                if self.queue.full():
+                    try:
+                        self.queue.get_nowait()
+                    except queue.Empty:
+                        pass
+                self.queue.put_nowait(data)
+            except json.JSONDecodeError:
+                print(f"[MQTT] Payload bukan JSON valid: {raw[:80]}")
+
+    def start(self):
+        """Memulai koneksi dan loop latar belakang paho-mqtt."""
+        print(f"[MQTT] Menghubungkan ke {config.MQTT_BROKER}:{config.MQTT_PORT}...")
+        self.client.connect_async(config.MQTT_BROKER, config.MQTT_PORT, keepalive=30)
+        self.client.loop_start()
+
+    def get_payload(self, timeout: float = 0.1) -> Optional[Dict[str, Any]]:
+        """Mengambil satu payload telemetri dari antrean (atau None jika kosong)."""
+        try:
+            return self.queue.get(timeout=timeout)
+        except queue.Empty:
+            return None
+
+    def stop(self):
+        """Menghentikan loop MQTT dengan bersih."""
+        self.client.loop_stop()
+        self.client.disconnect()
+
